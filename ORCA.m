@@ -1,6 +1,7 @@
 function ORCA2_2
 %% ORCA (Objective Routine for Conduction velocity Analysis)
 % Version 2.1
+% Version 2.2 (2018-08-08) RJ3
 
 % Created by Ashish Doshi and Bastiaan Boukens
 % Laboratory of Igor Efimov
