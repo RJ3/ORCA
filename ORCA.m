@@ -1,4 +1,4 @@
-function ORCA2_2
+function ORCA
 %% ORCA (Objective Routine for Conduction velocity Analysis)
 % Version 2.1
 % Version 2.2 (2018-08-08) RJ3
