@@ -21,16 +21,20 @@ else
 end
 
 % User prompt for input
-prompt1 = {'Path','Filename','Enter magnifaction power (for example, 0.9)','Edit advanced options? Y/N'};
+prompt1 = {'Directory','Filename (*.csv)','cm/px','stimX (enter 0 to click)','stimY (enter 0 to click)','Edit advanced options? Y/N'};
 dlg_title1 = 'User options';
 num_lines1 = 1;
-def1 = {'/home/lab/Documents/Langendorff-MEHP/ActMaps/','ActMap.csv','1','Y'};
+def1 = {'/media/raf/2d62d421-176c-4937-83f6-2eef8ee7a190/ActMaps/','ActMap.csv','0.0057','0','0','N'};
 answer = inputdlg(prompt1,dlg_title1,num_lines1,def1);
 % process user inputs
 direc = answer{1};
 filename = answer{2};
-magnx = str2double(answer{3});
-advanced = answer{4};
+% magnx = str2double(answer{3});
+dx = str2double(answer{3});
+dy=dx;
+stimx=str2double(answer{4});
+stimy=str2double(answer{5});
+advanced = answer{6};
 
 if strcmp(advanced,'Y') || strcmp(advanced,'y') || strcmp(advanced,'Yes') || strcmp(advanced,'yes') || strcmp(advanced,'YES')
     % User prompt for input for advanced options
@@ -50,8 +54,8 @@ else
     dangle = 10;     % angle in degrees between lines
     angle_off = 5;  % angle offset from 0 (to avoid artifact at 90 degrees)
     linesamplerate = 100; % length of vector used to draw line for activation times
-    dx = 0.01/magnx;    % distance between elements in x direction (cm)
-    dy = 0.01/magnx;    % distance between elements in y direction (cm)
+%     dx = 0.01/magnx;    % distance between elements in x direction (cm)
+%     dy = 0.01/magnx;    % distance between elements in y direction (cm)
 end
 
 % load activation map
@@ -107,7 +111,11 @@ ActRegion = actMap1;   % new activation map (region of interest)
 ActBounds = prctile(reshape(ActRegion,numel(ActRegion),1),[1 95]);
 
 % plot region and ask for stimulus point
-stim_select=0;  % set loop trigger
+if stimx == 0
+    stim_select=0;  % set loop trigger
+else
+    stim_select=1;
+end
 
 while stim_select==0
     pcolor(xnew,ynew,ActRegion)
@@ -261,6 +269,12 @@ arrowkey = 'rightarrow';    % user keyboard command
 CVperangle = zeros(1,numlines);
 anglevec = angle_off+dangle*(0:(numlines-1));
 
+% setup results vector / RJ3 2018-09-17
+dxVec=repmat(dx, length(anglevec),1); % 1- column is cm/px that the user entered
+stimXvec=repmat(stimx,length(anglevec),1); % 2 - stimX that user selected
+stimYvec=repmat(stimy,length(anglevec),1); % 3 - stimY that user selected
+results=horzcat([dxVec stimXvec stimYvec anglevec' zeros(length(anglevec),1)]); % 4 - init cm/sec vector
+
  while trigger_main > 0
     % wait for keyboard command and jump to corresponding switch case
     set(h_fig,'KeyPressFcn',@(H,E) assignin('caller','arrowkey',E.Key));
@@ -336,13 +350,16 @@ anglevec = angle_off+dangle*(0:(numlines-1));
             %bottom-right plot: plot CV vs angle
             if sum(CVperangle)~=0;
                 CVPlot = subplot(2,2,4);
-                bar(anglevec,CVperangle,'b')
+                   bar(anglevec,CVperangle,'b')
                 xlim([anglevec(1) anglevec(end)])
                 title('User-measured CV at each angle')
                 ylabel('Conduction velocity (cm/sec)')
                 xlabel('Angle')
                 set(gca,'Fontsize',16,'fontWeight','bold')
                 whitebg([0 0 0])
+                
+                % 2018-09-10 New Table Section for Results
+                results(:,5)=CVperangle'
             end
             
             %bottom left: display UI information
