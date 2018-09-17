@@ -273,7 +273,7 @@ anglevec = angle_off+dangle*(0:(numlines-1));
 dxVec=repmat(dx, length(anglevec),1); % 1- column is cm/px that the user entered
 stimXvec=repmat(stimx,length(anglevec),1); % 2 - stimX that user selected
 stimYvec=repmat(stimy,length(anglevec),1); % 3 - stimY that user selected
-results=horzcat([dxVec stimXvec stimYvec anglevec' zeros(length(anglevec),1)]); % 4 - init cm/sec vector
+results=horzcat([dxVec stimXvec stimYvec anglevec' nan(length(anglevec),1)]); % 4 - init cm/sec vector
 
  while trigger_main > 0
     % wait for keyboard command and jump to corresponding switch case
