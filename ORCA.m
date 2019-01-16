@@ -2,7 +2,7 @@ function ORCA
 %% ORCA (Objective Routine for Conduction velocity Analysis)
 % Version 2.1
 % Version 2.2 (2018-08-08) RJ3
-% Version 2.3 (2019-01-16) DKM
+% Version 2.3 (2019-01-16) DM
 %
 % Written by: Ashish Doshi and Bastiaan Boukens
 % Includes snippets by: Christopher Gloschat, CVRTI - University of Utah
@@ -72,8 +72,7 @@ ynew=dy:dy:yelems*dy;    % vector of elements in y-direction
 
 % scale colormap of activation times to 5th and 90th percentiles to
 % minimize background and noise
-ActRawBound = prctile(reshape(actMap1,numel(actMap1),1),[5 90]);
-
+% ActRawBound = prctile(reshape(actMap1,numel(actMap1),1),[5 90]);
 % plot activation map to select region of interest
 % SECTION REMOVED RJ3 2018-03-15
 % reg_select=0;       % set loop trigger
@@ -111,10 +110,10 @@ ActRegion = actMap1;   % new activation map (region of interest)
 % ynew = yorig;
 
 
-% scale color map of region of interest based on 1st and 95th percentile of
+% scale color map of region of interest based on 1st and 80th percentile of
 % activation times to minimize noise and enhance contrast for stimulus
 % selection
-ActBounds = prctile(reshape(ActRegion,numel(ActRegion),1),[1 99]);
+ActBounds = prctile(reshape(ActRegion,numel(ActRegion),1),[1 80]);
 
 % plot region and ask for stimulus point
 if stimx == 0
