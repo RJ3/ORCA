@@ -2,14 +2,18 @@ function ORCA
 %% ORCA (Objective Routine for Conduction velocity Analysis)
 % Version 2.1
 % Version 2.2 (2018-08-08) RJ3
-% 2018-09-19  Altered the UI for simpler workflow RJ3
-
-% Created by Ashish Doshi and Bastiaan Boukens
-% Laboratory of Igor Efimov
-% Washington University in St. Louis
-% Please contact ashishndoshi@gmail.com with questions or suggested
-% modifications. We welcome improvements to the code and user interface!
-% We are not experts at MATLAB, so any improvements are appreciated.
+% Version 2.3 (2019-01-16) DM
+%
+% Written by: Ashish Doshi and Bastiaan Boukens
+% Includes snippets by: Christopher Gloschat, CVRTI - University of Utah
+% Authors' Affiliation: Laboratory of Igor Efimov -The George Washington 
+% University
+% Author Note: Please contact ashishndoshi@gmail.com with questions or 
+% suggested modifications. We welcome improvements to the code and user 
+% interface! We are not experts at MATLAB, so any improvements are 
+% appreciated.
+% Associated Publication: 
+% http://www.sciencedirect.com/science/article/pii/S0010482515001754?via%3Dihub
 
 pause on;       % enable MATLAB's pause function (allows time for user to respond)
 
@@ -24,8 +28,8 @@ end
 % User prompt for input
 prompt1 = {'Directory','Filename (*.csv)','cm/px','stimX (enter 0 to click)','stimY (enter 0 to click)','Edit advanced options? Y/N'};
 dlg_title1 = 'User options';
-num_lines1 = 1;
-def1 = {'/media/raf/2d62d421-176c-4937-83f6-2eef8ee7a190/ActMaps/','ActMap.csv','0.0057','0','0','N'};
+num_lines1 = [1 60];
+def1 = {'C:\Users\dmcculloug\Desktop\Data\MEHP\ConductionVelocity\20180522-rata\ActMaps\','ActMap-20180522-rata-10.csv','0.0048','0','0','N'};
 answer = inputdlg(prompt1,dlg_title1,num_lines1,def1);
 % process user inputs
 direc = answer{1};
@@ -42,7 +46,7 @@ if strcmp(advanced,'Y') || strcmp(advanced,'y') || strcmp(advanced,'Yes') || str
     prompt2 = {'Enter number of degrees between tested angles','Enter angle offset','Enter sampling rate of interpolation line','Enter actual distance between recording sites in cm (x-direction)','Enter actual distance between recording sites in cm (y-direction)'};
     dlg_title2 = 'Advanced user options';
     num_lines2 = 1;
-    def2 = {'10','5','100','0.01','0.01'};
+    def2 = {'10','5','500','0.01','0.01'};
     answer = inputdlg(prompt2,dlg_title2,num_lines2,def2);
     % process user inputs
     dangle = str2double(answer{1});
@@ -54,7 +58,7 @@ else
     % default values if user chooses no to advanced options
     dangle = 10;     % angle in degrees between lines
     angle_off = 5;  % angle offset from 0 (to avoid artifact at 90 degrees)
-    linesamplerate = 100; % length of vector used to draw line for activation times
+    linesamplerate = 500; % length of vector used to draw line for activation times
 %     dx = 0.01/magnx;    % distance between elements in x direction (cm)
 %     dy = 0.01/magnx;    % distance between elements in y direction (cm)
 end
@@ -63,12 +67,12 @@ end
 actMap1 = csvread([direc,filename]);
 [yelems, xelems] = size(actMap1);    % detect size of activation map
 xnew=dx:dx:xelems*dx;    % vector of elements in x-direction
+xMax = max(xnew);
 ynew=dy:dy:yelems*dy;    % vector of elements in y-direction
 
-% scale colormap of activation times to 5th and 80th percentiles to
+% scale colormap of activation times to 5th and 90th percentiles to
 % minimize background and noise
-ActRawBound = prctile(reshape(actMap1,numel(actMap1),1),[5 80]);
-
+% ActRawBound = prctile(reshape(actMap1,numel(actMap1),1),[5 90]);
 % plot activation map to select region of interest
 % SECTION REMOVED RJ3 2018-03-15
 % reg_select=0;       % set loop trigger
@@ -106,10 +110,10 @@ ActRegion = actMap1;   % new activation map (region of interest)
 % ynew = yorig;
 
 
-% scale color map of region of interest based on 1st and 95th percentile of
+% scale color map of region of interest based on 1st and 80th percentile of
 % activation times to minimize noise and enhance contrast for stimulus
 % selection
-ActBounds = prctile(reshape(ActRegion,numel(ActRegion),1),[1 95]);
+ActBounds = prctile(reshape(ActRegion,numel(ActRegion),1),[1 80]);
 
 % plot region and ask for stimulus point
 if stimx == 0
@@ -128,8 +132,6 @@ while stim_select==0
     title('Please select stimulus point and press enter')
     xlabel('cm'); ylabel('cm');
     [stimx, stimy] = getpts;     % retrieve user input
-    disp(stimx) % added live feedback
-    disp(stimy)
     % cases of improper user selection
     if length(stimx)>1
         msgbox('Please select only one point','Error','error','modal');
@@ -148,17 +150,23 @@ end
 xmin = 1;
 ymin = 1;
 [height, width] = size (actMap1);
-
+heightCM = (height+1)*dy; % Activation map height in cm
+widthCM = (width+1)*dy; % Activation map width in cm
 xmin2 = xmin + round(stimx/dx-width/2);
 ymin2 = ymin + round(stimy/dy-height/2);
+disp(['Size W x H (pixels) : ',num2str(width),' x ',num2str(height)])
+disp(['Size W x H (cm) : ',num2str(widthCM),' x ',num2str(heightCM)])
+fprintf('Stim X Y: \t %f \t %f\n', stimx, stimy)
 
 if xmin2>1 && ymin2>1 && (xmin2+width)<=xelems && (ymin2+height)<=yelems
     % if recentering region around stimulus will not go outside data bounds
+    disp('Creating region of interest!')
     xregion = xmin2:1:(xmin2+width);      % rows to pull
     yregion = ymin2:1:(ymin2+height);     % columns to pull
     ActRegion = actMap1(yregion,xregion);   % new activation map (region of interest)
-    stimx = max(xnew)/2;        % redefine stim point as center of region of interest
-    stimy = max(ynew)/2;        % redefine stim point as center of region of interst
+    disp('Chosen stim point (stimx, stimy):')
+    stimx = max(xnew)/2        % redefine stim point as center of region of interest
+    stimy = max(ynew)/2        % redefine stim point as center of region of interst
 else
 %     % if recentering region will go outside of data bounds, clip the region
 %     % of interest to keep it within the data bounds while keeping the
@@ -198,6 +206,15 @@ interpline_y = zeros(numlines,linesamplerate); % create matrix for y-coordinates
 interpline_x = zeros(numlines,linesamplerate); % create matrix for x-coordinates of lines used to interpolate activation map data
 interpActTime = zeros(numlines,linesamplerate);   % matrix for activation time along interpolation line
 
+interpline_y2 = zeros(numlines,linesamplerate); % create matrix for y-coordinates of lines used to interpolate activation map data (same line as demolines but more data points)
+interpline_x2 = zeros(numlines,linesamplerate); % create matrix for x-coordinates of lines used to interpolate activation map data
+interpActTime2 = zeros(numlines,linesamplerate);   % matrix for activation time along interpolation line
+% Calculated angles to denote region of analysis (borders at corners of activation map)
+quad1_angle = atand(abs(stimy-height)/abs(stimx-width));
+quad2_angle = (180-quad1_angle);
+quad3_angle = quad1_angle + 180;
+quad4_angle = quad2_angle + 180;
+
 % calculate coordinates of interpolation lines from angles
 for i=1:numlines
     % x-coordinates to use for interpolation line (interpline_x) calculated
@@ -206,52 +223,75 @@ for i=1:numlines
     % interpolation line does not cover the entire width of the rectangle),
     % the expected range of x-coordinates are calculated from width and
     % angle
-    
-    if (i-1)*dangle+angle_off < 90      % for angles less than 90 degrees
-        if (pi*(((i-1)*dangle+angle_off)/180)) > atan(height/(0.9*width))       % for angles greater than threshold (0.9 factor of width is fudge factor)
-            % x-coordinates calculated based on steepness of angle
-            interpline_x(i,:) = (max(xnew)-stimx-(max(ynew)./tan(pi*(((i-1)*dangle+angle_off)/180)))/2):(max(ynew)./tan(pi*(((i-1)*dangle+angle_off)/180)))/linesamplerate:(max(xnew)-stimx+(max(ynew)./tan(pi*(((i-1)*dangle+angle_off)/180)))/2)-(max(ynew)./tan(pi*(((i-1)*dangle+angle_off)/180)))/linesamplerate;
-        else   % for shallow angles less than threshold
-            % x-coordinates taken as x-coordinates of entire region
-            interpline_x(i,:) = max(xnew)/linesamplerate:max(xnew)/linesamplerate:max(xnew);
-        end
-        
-    elseif (i-1)*dangle+angle_off > 90  && (i-1)*dangle+angle_off <= 180  % for angles between 90 and 180 degrees
-        if (pi*(((i-1)*dangle+angle_off)/180)) < pi - atan(height/(0.9*width))  % for angles between 90 degrees and threshold (steep angles)
-            % x-coordinates calculated based on steepness of angle
-            interpline_x(i,:) = fliplr((max(xnew)-stimx-(max(ynew)./tan(pi-pi*(((i-1)*dangle+angle_off)/180)))/2):(max(ynew)./tan(pi-pi*(((i-1)*dangle+angle_off)/180)))/linesamplerate:(max(xnew)-stimx+(max(ynew)./tan(pi-pi*(((i-1)*dangle+angle_off)/180)))/2)-(max(ynew)./tan(pi-pi*(((i-1)*dangle+angle_off)/180)))/linesamplerate);
-        else   % for shallow angles less than threshold
-            % x-coordinates taken as x-coordinates of entire region
-            interpline_x(i,:) = fliplr(max(xnew)/linesamplerate:max(xnew)/linesamplerate:max(xnew));
-        end
-        
-    elseif (i-1)*dangle+angle_off > 180  && (i-1)*dangle+angle_off < 270  % for angles between 180 and 270 degrees
-        if (pi*(((i-1)*dangle+angle_off)/180)) > pi + atan(height/(0.9*width))  % for angles between 270 degrees and threshold (steep angles)
-            % x-coordinates calculated based on steepness of angle
-            interpline_x(i,:) = fliplr((max(xnew)-stimx-(max(ynew)./tan(pi*(((i-1)*dangle+angle_off)/180)))/2):(max(ynew)./tan(pi*(((i-1)*dangle+angle_off)/180)))/linesamplerate:(max(xnew)-stimx+(max(ynew)./tan(pi*(((i-1)*dangle+angle_off)/180)))/2)-(max(ynew)./tan(pi*(((i-1)*dangle+angle_off)/180)))/linesamplerate);
-        else   % for shallow angles less than threshold
-            % x-coordinates taken as x-coordinates of entire region
-            interpline_x(i,:) = fliplr(max(xnew)/linesamplerate:max(xnew)/linesamplerate:max(xnew));
-        end
-        
-    elseif (i-1)*dangle+angle_off > 270  % for angles greater than 270 degrees
-        if (pi*(((i-1)*dangle+angle_off)/180)) < 2*pi - atan(height/(0.9*width))  % for angles between 270 degrees and threshold (i.e. steep angles)
-            % x-coordinates calculated based on steepness of angle
-            interpline_x(i,:) = (max(xnew)-stimx-(max(ynew)./tan(pi-pi*(((i-1)*dangle+angle_off)/180)))/2):(max(ynew)./tan(pi-pi*(((i-1)*dangle+angle_off)/180)))/linesamplerate:(max(xnew)-stimx+(max(ynew)./tan(pi-pi*(((i-1)*dangle+angle_off)/180)))/2)-(max(ynew)./tan(pi-pi*(((i-1)*dangle+angle_off)/180)))/linesamplerate;
-        else   % for shallow angles (i.e. between threshold and 180 degrees)
-            % x-coordinates taken as x-coordinates of entire region
-            interpline_x(i,:) = max(xnew)/linesamplerate:max(xnew)/linesamplerate:max(xnew);
-        end
-        
-    elseif ((i-1)*dangle+angle_off == 90)||((i-1)*dangle+angle_off == 270)         % if angle is exactly 90 or 270 degrees
-        % abort
-        error('Routine unable to run interpolation at exactly 90 or 270 degrees. Please re-run the routine and choose angle options that do not result in an interpolation line at 90 degrees.');
-    end
+    angle = (i-1)*dangle+angle_off;
+    angleRad = pi*(angle/180);
+%     disp([num2str(angle),newline,...
+%         'interpline_x length: ',num2str(length(interpline_x(i,:))),newline, ...
+%         'interpline_y length: ',num2str(length(interpline_y(i,:)))])
+
     % use linear interpolation of 2D activation map; obtain activation time
     % of an interpolation line drawn along the activation map
-    demolines(i,:) = xnew*tan(pi*(((i-1)*dangle+angle_off)/180))-stimx*tan(pi*(((i-1)*dangle+angle_off)/180))+stimy;
-    interpline_y(i,:) = interpline_x(i,:)*tan(pi*(((i-1)*dangle+angle_off)/180))-stimx*tan(pi*(((i-1)*dangle+angle_off)/180))+stimy;
-    interpActTime(i,:) = interp2(xnew,ynew,ActRegion,interpline_x(i,:),interpline_y(i,:),'linear');
+    demolines(i,:) = xnew*tan(angleRad) - stimx*tan(angleRad) + stimy;
+    if angle < 180
+        if angle < 90
+            firstY = demolines(i,1); % y-intercept of current interpolation line
+            startX = firstY*(stimx/(firstY - stimy)); % x-intercept of current interpolation line
+            endX = (heightCM - firstY)*(stimx/(stimy - firstY));
+            if firstY > 0 % from 0 - ~45
+                display('Quad1.5')
+                interpline_x2(i,:) = xMax/linesamplerate:xMax/linesamplerate:xMax;
+            else % from ~45 - 90
+                display('Quad2.0')
+                interpline_x2(i,:) = startX:(endX-startX)/(linesamplerate-1):endX;
+            end
+
+        else % from 90 - 180
+            firstY = demolines(i,1); % y-intercept of current interpolation line
+            startX = firstY*(stimx/(firstY - stimy)); % x-intercept of current interpolation line
+            endX = (heightCM - firstY)*(stimx/(stimy - firstY));
+            length((startX:(endX - startX)/(linesamplerate - 1):endX));
+            if firstY > heightCM % from 90 - ~135
+                display('Quad2.5')
+                interpline_x2(i,:) = fliplr(endX:abs(startX-endX)/(linesamplerate-1):startX);
+            else % from ~135 - 180 TODO plot not centered on stim line
+                display('Quad3.0')
+                interpline_x2(i,:) = fliplr(xMax/linesamplerate:xMax/linesamplerate:xMax);
+            end
+        end
+
+    else    % greater than 180
+        if angle < 270
+            firstY = demolines(i,1); % y-intercept of current interpolation line
+            startX = firstY*(stimx/(firstY-stimy)); % x-intercept of current interpolation line
+            endX = (heightCM-firstY)*(stimx/(stimy -firstY));
+            secondY = widthCM*((stimy -firstY)/stimx)+firstY;
+            if secondY < heightCM % from 180 - ~225
+                display('Quad3.5...')
+                interpline_x2(i,:) = fliplr(xMax/linesamplerate:xMax/linesamplerate:xMax);
+            else % from ~225 - 270
+                display('Quad4.0...')
+                interpline_x2(i,:) = fliplr(startX:abs(endX-startX)/(linesamplerate-1):endX);
+            end
+        else % from 270 - 360
+            firstY = demolines(i,1); % y-intercept of current interpolation line
+            startX = firstY*(stimx/(firstY-stimy)); % x-intercept of current interpolation line
+            endX = (heightCM - firstY)*(stimx/(stimy -firstY));
+            secondY = widthCM*((stimy -firstY)/stimx)+firstY;
+            if firstY > heightCM % from 270 - ~315
+                display('Quad4.5...')
+                interpline_x2(i,:) = endX:abs(endX-startX)/(linesamplerate-1):startX;
+            else % from ~315 - 360
+                display('Quad1.0...')
+                interpline_x2(i,:) = xMax/linesamplerate:xMax/linesamplerate:xMax;
+            end
+        end
+    end
+    interpline_y2(i,:) = interpline_x2(i,:)*tan(angleRad) - stimx*tan(angleRad) + stimy;
+    interpActTime2(i,:) = interp2(xnew,ynew,ActRegion,interpline_x2(i,:),interpline_y2(i,:),'linear');
+    
+    display(['^^^^^^ contains Angle: ',num2str(angle),' '])
+    %interpline_y(i,:) = interpline_x(i,:)*tan(pi*(((i-1)*dangle+angle_off)/180))-stimx*tan(pi*(((i-1)*dangle+angle_off)/180))+stimy;
+%     interpActTime(i,:) = interp2(xnew,ynew,ActRegion,interpline_x(i,:),interpline_y(i,:),'linear');
     % define magnitude of display arrow from size of region
     arrowmag = min(size(ActRegion))/400;
 end
@@ -315,11 +355,11 @@ results=horzcat([dxVec stimXvec stimYvec anglevec' nan(length(anglevec),1)]); % 
             pcolor(xnew,ynew,ActRegion) %plot activation map
             shading flat
             colormap jet
-            title('Activation Map of Region')
+            title(['File: ', filename])
             xlabel('cm'); ylabel('cm');
             axis([dx (width+1)*dx dy (height+1)*dy])
             hold on
-            plot(xnew,demolines(i,:),'r','LineWidth',1) %plot interpolation line
+            plot(xnew,demolines(i,:),'w','LineWidth',1) %plot interpolation line
             %plot arrow
             quiver(stimx,stimy,arrowmag*cos(pi*(((i-1)*dangle+angle_off)/180)),arrowmag*sin(pi*(((i-1)*dangle+angle_off)/180)),'r','MaxHeadSize',10,'LineWidth',2,'MarkerSize',30)
             set(gca,'Fontsize',16,'fontWeight','bold')
@@ -327,21 +367,82 @@ results=horzcat([dxVec stimXvec stimYvec anglevec' nan(length(anglevec),1)]); % 
             caxis([ActBounds(1) ActBounds(2)])
             
             % characterize path along which values interpolated
-            pathlength = abs((max(interpline_x(i,:))-min(interpline_x(i,:)))./cos(pi*((i-1)*dangle+angle_off)/180));    % calculate length of entire interpolation line
-            dlength = pathlength/linesamplerate; % calculate distance between interpolated points on path of line
-            totalpathvec = dlength:dlength:pathlength;    % vector representing total interpolation path (including path outside of region)
-            idx_first = find(sum(~isnan(interpActTime(i,:)),1) > 0, 1, 'first');    % find first point of interpolation line in the actual region of interest
-            idx_last = find(sum(~isnan(interpActTime(i,:)),1) > 0, 1, 'last');      % find last point of interpolation line in the region of interest
+            curAngle = (i-1)*dangle+angle_off; % Current angle of analysis line (in degrees)
+            pathlength2 = abs((max(interpline_x2(i,:))-min(interpline_x2(i,:)))./cos(pi*curAngle/180));    % calculate length of entire interpolation line
+            fprintf(['Angle: ',num2str(curAngle),', pathlength: ',num2str(pathlength2)])
+            dlength2 = pathlength2/linesamplerate; % calculate distance between interpolated points on path of line
+            totalpathvec2 = dlength2:dlength2:pathlength2;    % vector representing total interpolation path (including path outside of region)
+%             idx_first = find(sum(~isnan(interpActTime(i,:)),1) > 0, 1, 'first');    % find first point of interpolation line in the actual region of interest
+%             idx_last = find(sum(~isnan(interpActTime(i,:)),1) > 0, 1, 'last');      % find last point of interpolation line in the region of interest
             
             %top-right plot: activation time along interpolation line
             ActPlot = subplot(2,2,2);
-            ActCurve = smooth(totalpathvec,interpActTime(i,:),linesamplerate/10,'moving');
-            plot(totalpathvec,ActCurve,'color',[0.5 0.5 0.5],'Linewidth',1)
+            ActCurve2 = smooth(totalpathvec2,interpActTime2(i,:),linesamplerate/10,'moving');
+            
+%             plot(totalpathvec,ActCurve,'color',[0.5 0.5 0.5],'Linewidth',1)
+            plot(totalpathvec2,ActCurve2,'color',[0.3 0.4 0.3],'Linewidth',1)
             hold on
-            plot(totalpathvec,interpActTime(i,:),'.','Color','r')
+            plot(totalpathvec2,interpActTime2(i,:),'.','Color','r')
+            % Show stim point and analysis direction on activation time
+            % plot (may only work for relatively centered stim points!)
+            if curAngle < 180
+                if curAngle < 90
+                    firstY = demolines(i,1); % y-intercept of current interpolation line
+                    firstX = firstY*(stimx/(firstY-stimy)); % x-intercept of current interpolation line
+                    if firstY > 0 % from 0 - ~45
+                        stimLineX = pdist([ stimx,stimy ; 0,firstY ]);
+                    else % from ~45 - 90
+                        stimLineX = pdist([ stimx,stimy ; firstX,0 ]);
+                    end
+                    
+                else % from 90 - 180
+                    firstY = demolines(i,1); % y-intercept of current interpolation line
+                    firstX = firstY*(stimx/(firstY-stimy)); % x-intercept of current interpolation line
+                    secondX = (heightCM-firstY)*(stimx/(stimy -firstY));
+                    secondY = widthCM*((stimy -firstY)/stimx)+firstY;
+                    if firstY > heightCM % from 90 - ~135
+                        stimLineX = pdist([ stimx,stimy ; firstX,0 ]);
+                    else % from ~135 - 180 TODO plot not centered on stim line
+                        stimLineX = pdist([ stimx,stimy ; firstX,firstY ]);
+                    end
+                end
+                
+            else    % greater than 180
+                if curAngle < 270
+                    firstY = demolines(i,1); % y-intercept of current interpolation line
+                    secondX = (heightCM-firstY)*(stimx/(stimy -firstY));
+                    secondY = widthCM*((stimy -firstY)/stimx)+firstY;
+                    if secondY < heightCM % from 180 - ~225
+                        stimLineX = pdist([ stimx,stimy ; widthCM,secondY ]);
+                    else % from ~225 - 270
+                        stimLineX = pdist([ stimx,stimy ; secondX,heightCM ]);
+                    end
+                else % from 270 - 360
+                    firstY = demolines(i,1); % y-intercept of current interpolation line
+                    secondX = (heightCM-firstY)*(stimx/(stimy -firstY));
+                    secondY = widthCM*((stimy -firstY)/stimx)+firstY;
+                    if firstY > heightCM % from 270 - ~315
+                        stimLineX = pdist([ stimx,stimy ; secondX,heightCM ]);
+                    else % from ~315 - 360
+                        stimLineX = pdist([ stimx,stimy ; 0,firstY ]);
+                    end
+                end
+                %disp(['SecondX: ',num2str(secondX),' | SecondY: ',num2str(secondY)])
+            end
+            %disp(['FirstX: ',num2str(firstX),' | FirstY: ',num2str(firstY)])
+            disp(['stimLineX: ',num2str(stimLineX)])
+            plot([0 pathlength2], [ActBounds(1)/2 ActBounds(1)/2], '--','Color','w') % Line to show bounds of data (ends of analysis line including NANs)
+            plot([stimLineX stimLineX], [0 ActBounds(1)], '--','Color','w') % Line to mark stim point along analysis line
+            drawArrow = @(x,y,varargin) quiver( x(1),y(1),x(2)-x(1),y(2)-y(1),0, varargin{:}); % Arrow to show analysis direction
+            arrowX = [stimLineX stimLineX+0.2];
+            arrowY = [ActBounds(1)/2 ActBounds(1)/2];
+            drawArrow(arrowX,arrowY,'r','MaxHeadSize',6,'LineWidth',1,'MarkerSize',4);
             hold off
-            ylim([ActBounds(1)-2 ActBounds(2)])
-%            xlim([totalpathvec(idx_first) totalpathvec(idx_last)])
+            ylim([ActBounds(1)/3 ActBounds(2)+2])
+            yticks(round(ActBounds(1)/3) : 2 : round(ActBounds(2)+2))
+            xlim([0 sqrt(max(xnew)^2 + max(ynew)^2)])  % Set x-axis limit to max length of any/all analysis lines
+            xticks(0 : 0.5 : round(sqrt(max(xnew)^2 + max(ynew)^2)))
+            %xlim([totalpathvec(idx_first) totalpathvec(idx_last)])
             title('Activation times along line')
             ylabel('Activation time (msec)')
             xlabel('Distance along analysis line (cm)')
@@ -349,7 +450,7 @@ results=horzcat([dxVec stimXvec stimYvec anglevec' nan(length(anglevec),1)]); % 
             whitebg([0 0 0])
             
             %bottom-right plot: plot CV vs angle
-            if sum(CVperangle)~=0;
+            if sum(CVperangle)~=0
                 CVPlot = subplot(2,2,4);
                    bar(anglevec,CVperangle,'b')
                 xlim([anglevec(1) anglevec(end)])
@@ -391,12 +492,12 @@ results=horzcat([dxVec stimXvec stimYvec anglevec' nan(length(anglevec),1)]); % 
                     point_select=1;  % user selected properly
                 end
             end
-            [~, idx1] = min(abs(xselect(1)-totalpathvec));
-            [~, idx2] = min(abs(xselect(2)-totalpathvec));
-            x1 = totalpathvec(idx1);
-            x2 = totalpathvec(idx2);
-            Act1 = interpActTime(i,idx1);
-            Act2 = interpActTime(i,idx2);
+            [~, idx1] = min(abs(xselect(1)-totalpathvec2));
+            [~, idx2] = min(abs(xselect(2)-totalpathvec2));
+            x1 = totalpathvec2(idx1);
+            x2 = totalpathvec2(idx2);
+            Act1 = interpActTime2(i,idx1);
+            Act2 = interpActTime2(i,idx2);
             CVuser = abs(1000*(x2-x1)/(Act2-Act1));
             CVperangle(i) = CVuser;
             delete(findall(gcf,'Tag','select_box'));
